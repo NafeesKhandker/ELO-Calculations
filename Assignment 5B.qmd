@@ -1,0 +1,50 @@
+---
+title: "Assignment 5B"
+author: "Khandker Qaiduzzaman"
+format: html
+editor: visual
+---
+
+# Objective
+
+Calculate each chess player’s expected score using the ELO rating system based on the provided dataset, compare it with their actual score, and identify the top five players who over-performed and under-performed relative to expectations.
+
+# Approach
+
+### Dataset description
+
+For this assignment, I will use the output dataset generated from Project 1, which is a preprocessed CSV file containing structured chess tournament results. The dataset can be accessed here: <https://raw.githubusercontent.com/NafeesKhandker/ELO-Calculations/refs/heads/main/Chess_result_data.csv>
+
+This dataset is already cleaned and organized, making it suitable for direct analysis. The dataset contains the following columns:
+
+-   **pair_num**: Unique pairing number assigned to each player
+
+-   **Player_name**: Name of the player
+
+-   **State**: Player's stat
+
+-   **Total_points**: Total points scored by the player in the tournament
+
+-   **Rating**: Player’s pre-tournament rating
+
+-   **Avg_opponent_rating**: Average rating of all opponents faced by the player
+
+This structured dataset simplifies the calculation of expected scores and performance differences using the ELO rating system.
+
+### Anticipated Challenges
+
+The main anticipated challenge for this project is implementing the ELO expected score calculation correctly and efficiently. Since each player competes against multiple opponents, the expected score must be calculated individually for each match and then aggregated. Another challenge is ensuring accurate numerical computation, especially when dealing with floating-point precision during exponential calculations.
+
+### Mock Output:
+
+Pair_num, Player_name, State, Actual_score, Expected_score, Difference
+
+1, GARY HUA, ON, 6.0, 5.2, +0.8
+
+2, DAKSHESH DARURI, MI, 6.0, 4.3, +1.7
+
+3, ADITYA BAJAJ, MI, 6.0, 1.8, +4.2
+
+4, PATRICK H SCHILLING, MI, 5.5, 4.9, +0.6
+
+5, HANSHI ZUO, MI, 5.5, 5.0, +0.5
