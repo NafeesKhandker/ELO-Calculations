@@ -35,7 +35,7 @@ This structured dataset simplifies the calculation of expected scores and perfor
 
 The main anticipated challenge for this project is implementing the ELO expected score calculation correctly and efficiently. Since each player competes against multiple opponents, the expected score must be calculated individually for each match and then aggregated. Another challenge is ensuring accurate numerical computation, especially when dealing with floating-point precision during exponential calculations.
 
-### Mock Output:
+### Mock Output
 
 Pair_num, Player_name, State, Actual_score, Expected_score, Difference
 
@@ -48,3 +48,144 @@ Pair_num, Player_name, State, Actual_score, Expected_score, Difference
 4, PATRICK H SCHILLING, MI, 5.5, 4.9, +0.6
 
 5, HANSHI ZUO, MI, 5.5, 5.0, +0.5
+
+### Implementation of ELO calculation
+
+```{r}
+library(tidyverse)
+library(gt)
+
+url <- "https://raw.githubusercontent.com/NafeesKhandker/ELO-Calculations/refs/heads/main/Chess_result_data.csv"
+
+df <- read_csv(file = url, show_col_types = FALSE, progress = FALSE)
+
+df |> gt()
+```
+
+In this step, we are calculating the expected score per game for a player. The expected score for Player A against Player B (average opponents rating in our case) is given by:
+
+$$
+E_A = \frac{1}{1 + 10^{\frac{R_B - R_A}{400}}}
+$$
+
+Where:
+
+-   $E_A$ = Expected score of Player A\
+-   $R_A$ = Rating of Player A\
+-   $R_B$ = Rating of Player B
+
+The second Elo formula updates a player's rating after each game based on the actual and expected scores:
+
+$$
+R_{\text{new}} = R_{\text{old}} + K \times (S - E)
+$$
+
+Where:
+
+-   $R_old$ = current rating of the player\
+-   $R_new$ = updated rating after the game\
+-   $K$ = K-factor (adjustment coefficient, e.g., 20, 32)\
+-   $S$ = actual score of the game (1 = win, 0.5 = draw, 0 = loss)\
+-   $E$ = expected score, calculated as:\
+
+```{r}
+library(tidyverse)
+
+# Set K-factor (adjust if needed)
+K <- 32
+
+df_final <- df %>%
+  mutate(
+    # Ensure numeric
+    rating_pre = as.numeric(rating_pre),
+    opponent_rating = as.numeric(opponent_rating),
+
+    # 1. Expected Score (Elo Formula)
+    expected_score = 1 / (1 + 10 ^ ((opponent_rating - rating_pre) / 400)),
+
+    # 2. Actual Score
+    actual_score = case_when(
+      result_type == "W" ~ 1,
+      result_type == "D" ~ 0.5,
+      result_type == "L" ~ 0
+    ),
+
+    # 3. Rating Change (Second Elo Formula)
+    rating_change = K * (actual_score - expected_score),
+
+    # 4. Updated Rating per game
+    updated_rating = rating_pre + rating_change
+  )
+
+df_final |> gt()
+```
+
+In the following code, I aggregated the data to show total expected and total actual score in adjacent columns. Also, I am aggregating the average expected and average actual scores. Finally, the performance difference is calculated which is the target column of this assignment.
+
+```{r}
+# -----------------------------------------
+# Aggregate per player
+# -----------------------------------------
+
+df_summary <- df_final %>%
+  group_by(pair_num, player_name, state, rating_pre) %>%
+  summarise(
+    games = n(),
+
+    # Expected vs Actual
+    total_expected = sum(expected_score, na.rm = TRUE),
+    total_actual = sum(actual_score, na.rm = TRUE),
+
+    avg_expected = mean(expected_score, na.rm = TRUE),
+    avg_actual = mean(actual_score, na.rm = TRUE),
+
+    # Performance Difference
+    performance_diff = total_actual - total_expected,
+
+    # Rating Changes
+    total_rating_change = sum(rating_change, na.rm = TRUE),
+    final_rating = first(rating_pre) + total_rating_change,
+
+    .groups = "drop"
+  ) %>%
+  arrange(pair_num)
+
+# View results
+df_summary |> gt()
+```
+
+Top 5 overperformers relative to their expected score is shown below:
+
+```{r}
+# Top 5 Overperformers
+top_overperformers <- df_summary %>%
+  arrange(desc(performance_diff)) %>%
+  slice_head(n = 5) %>%
+  select(player_name, state, total_actual, total_expected, performance_diff, final_rating)
+
+# Print results
+top_overperformers |> gt()
+```
+
+Top 5 Underperformers relative to their expected score is shown below:
+
+```{r}
+# Top 5 Underperformers
+top_underperformers <- df_summary %>%
+  arrange(performance_diff) %>%
+  slice_head(n = 5) %>%
+  select(player_name, state, total_actual, total_expected, performance_diff, final_rating)
+
+# Print results
+top_underperformers |> gt()
+```
+
+### Conclusion
+
+In this analysis, we calculated each player’s expected scores using the Elo rating system and compared them to their actual performance. The results highlighted which players overperformed or underperformed relative to expectations, providing insight into performance consistency. By quantifying performance differences, this approach allows for a fair evaluation of players’ relative strengths and weaknesses. Overall, the Elo-based analysis demonstrates an effective method to predict and assess player outcomes in competitive settings.
+
+### References
+
+1.  Solon, N. (2022, December 12). How Elo ratings actually work. Chess.com. https://www.chess.com/blog/NateSolon/how-elo-ratings-actually-work
+2.  Grime, J. (2019, February 15). *The Elo rating system for chess and beyond* \[Video\]. YouTube. [https://www.youtube.com/watch?v=AsYfbmp0To0](https://www.youtube.com/watch?v=AsYfbmp0To0&utm_source=chatgpt.com)
+3.  OpenAI. (2026, March 1). *ChatGPT conversation on ELO ratings, R analysis, and data visualization* \[AI-generated transcript\]. OpenAI. <https://chat.openai.com/>
